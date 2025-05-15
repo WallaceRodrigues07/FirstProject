@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, gql } from "@apollo/client";
 import { useUserData } from '@nhost/react';
 import { CREATE_ROOM, DELETE_ROOM, ADD_COMMENT_TO_ROOM } from "../graphQL/mutations/Rooms";
+import { GET_ROOMS_WITH_MESSAGES } from "../graphQL/queries/Rooms";
 import { v4 as uuidv4 } from 'uuid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, PlusCircle, Users, Send, XCircle, AlertCircle } from 'lucide-react';
@@ -25,29 +26,13 @@ type Message = {
 }
 
 
-const GET_ROOMS_WITH_MESSAGES = gql`
-  query GetRoomsWithMessages {
-    rooms {
-      id
-      name
-      created_at
-      user_id
-      messages {
-        id
-        content
-        user_id
-        created_at
-        room_id
-      }
-    }
-  }
-`;
+
 
 const RoomsPage = () => {
   const { loading, error: queryError, data, refetch } = useQuery(GET_ROOMS_WITH_MESSAGES);
   const [createRoomMutation, { error: createRoomError }] = useMutation(CREATE_ROOM);
   const [addCommentMutation, { error: addCommentError }] = useMutation(ADD_COMMENT_TO_ROOM);
-  // const [deleteRoomMutation, { error: deleteRoomError }] = useMutation(DELETE_ROOM); 
+  const [deleteRoomMutation, { error: deleteRoomError }] = useMutation(DELETE_ROOM); 
 
   const [newRoomName, setNewRoomName] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -116,6 +101,27 @@ const RoomsPage = () => {
     setSelectedRoom(null);
     setLocalError(null);
   };
+
+
+
+
+  const handleDeleteRoom = async (roomId: string) => {
+  try {
+    const confirm = window.confirm("Tem certeza que deseja deletar esta sala?");
+    if (!confirm) return;
+
+    await deleteRoomMutation({ variables: { id: roomId } });
+    refetch(); // Atualiza a lista de salas
+  } catch (err: any) {
+    console.error("Erro ao deletar sala:", err.message);
+    setLocalError("Erro ao deletar sala: " + (err.message || "desconhecido"));
+  }
+};
+
+
+
+
+
 
   const handleAddComment = async () => {
 
@@ -246,6 +252,9 @@ const RoomsPage = () => {
                   className="bg-gray-50 rounded-md p-3 flex justify-between items-center hover:bg-gray-100 transition duration-150"
                 >
                   <span className="font-medium">{room.name}</span>
+                  <div className="flex gap-2">
+
+                    
                   <button
                     onClick={() => handleOpenRoom(room)}
                     className="bg-blue-500 hover:bg-blue-700 text-white font-semibold rounded-md py-2 px-4 focus:outline-none focus:shadow-outline text-sm flex items-center gap-2"
@@ -253,6 +262,16 @@ const RoomsPage = () => {
                     <MessageSquare className="w-4 h-4" />
                     Ver Sala
                   </button>
+
+                  <button
+                    onClick={() => handleDeleteRoom(room.id)}
+                    className="bg-red-500 hover:bg-red-700 text-white font-semibold rounded-md py-2 px-4 focus:outline-none focus:shadow-outline text-sm flex items-center gap-2"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Deletar
+                  </button>
+                </div>
+
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -292,7 +311,7 @@ const RoomsPage = () => {
                     className="bg-gray-100 rounded-md p-3"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-sm">{/* Aqui você pode buscar o nome do usuário com base no message.user_id */}Usuário {message.user_id.substring(0, 8)}</span>
+                      
                       <span className="text-xs text-gray-500">{getFormattedTimestamp(message.created_at)}</span>
                     </div>
                     <p className="text-gray-700">{message.content}</p>
